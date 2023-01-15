@@ -7,11 +7,16 @@
 #include <memory>
 #include <unordered_map>
 
-//maximum size of the background cache
-constexpr int BACKGROUND_CACHE_SIZE = 1000;
+struct In
+{
+	// member objects and member functions
+};
 
-struct In;
-struct Background;
+struct Background
+{
+	// member objects and member functions
+};
+
 struct State
 {
 	// member objects and member functions
@@ -31,7 +36,7 @@ public:
 	static const long time_to_live = 86400000; //milli-seconds equivalent to one day
 
 	//method to check if the Cached data has overshot the time to live
-	bool isUnderTimeToLive();
+	bool isUnderTimeToLive() const;
 
 	//Get hash method
 	std::string getHash() const;
@@ -71,7 +76,7 @@ CacheObject<Background>::CacheObject(	const std::string& hash,
 	m_data = std::make_shared<Background>(data);
 }
 
-bool CacheObject<Background>::isUnderTimeToLive()
+bool CacheObject<Background>::isUnderTimeToLive() const
 {
 	return ((std::clock() - m_begin_time) < time_to_live) ? true : false;
 }
@@ -116,19 +121,28 @@ std::unordered_map<std::string, CacheObject<Background>> background_cache;
 //For keeping the 
 std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> output_map;
 
-void checkBackgroundCache(const std::string& hash)
+template<typename T>
+void checkCacheDataValidity(
+	const std::unordered_map<std::string, CacheObject<T>>& cache)
 {
 	/* If a required Background value is not present in the cache, then the following is done :
 	 * 1. query and fetch the Background data from the database
 	 * 2. Create a temporary background cache object
 	 * 3. cache the data
 	 */ 
-	if (background_cache.find(hash) == background_cache.end())
+	for (auto it = cache.begin(); it != cache.end();)
 	{
-		CacheObject<Background> temp_background_cache_obj(hash, queryBackgroundFromDB(hash)); // 1. and 2.: Done
-		background_cache.insert({ hash, temp_background_cache_obj });	//3.: Done
+		if (!it->second.isUnderTimeToLive())
+		{
+			it = cache.erase(it);
+		}
+		else
+		{
+			it++;
+		}
 	}
 }
+//template void checkCacheDataValidity<Background>(const std::string, CacheObject<Background>& cache);
 
 
 
@@ -136,7 +150,9 @@ void checkBackgroundCache(const std::string& hash)
 template<typename In>
 State f(const State& state, In&&, const std::shared_ptr<Background const> background)
 {
+	//Make changes to the output_state instead of directly working on the the input argument 'state'
 	State return_state = state;
+
 	// The function runs from here on and returns ......
 
 	return return_state;
@@ -151,33 +167,66 @@ State f(const State& state, In&&, const std::shared_ptr<Background const> backgr
  *			= we assume that struct Background contains a std::string member object used to store 
  *			  a unique hash value
  */
-State interfaceFunction(const State& state, In&& input, const std::shared_ptr<Background const> background) 
+void interfaceFunction(
+	State& state, const In& input, const std::string& hash) 
 {
+	std::shared_ptr<Background const> background;
+
+	//Look if the background data corresponding to the hash value is present in the background_cache
+	if (background_cache.find(hash) != background_cache.end())
+	{
+		background = std::make_shared<Background const>(background_cache.at(hash).getData());
+	}
+	else
+	{
+		/* If a required Background value is not present in the cache, then the following is done :
+		 * 1. query and fetch the Background data from the database
+		 * 2. Create a temporary background cache object
+		 * 3. cache the data
+		 */
+
+		//1. Fetch the data from the DB using the hash value
+		background = queryBackgroundFromDB(hash);
+
+		// 2 and 3. creating a CacheObject with 'background' and caching it
+		background_cache.insert({ hash, CacheObject<Background>(hash, background)});
+	}
+
 	if (output_map.find(background) != output_map.end())
 	{
 		if (output_map.at(background).find(input) != output_map.at(background).end())
 		{
-			return output_map.at(background).at(input);
-		}
-		else
-		{
-
+			state = output_map.at(background).at(input);
 		}
 	}
+	else
+	{
+		/* Assumptions: all properties of pure function is satisfied, i.e.,
+		 *		- the function returns identical arguments (no variation with local static variables,
+		 *		  non-local variables, mutable reference arguments or input streams).
+		 *		- function has no side-effects, i.e., no mutation of local static variables, non-local
+		 *		  variables, mutable refernce arguments or input/output streams
+		 *		=> the above points imply that this function does not change any attribute within State
+		 *		  that is a mutable reference or calls any method in State that can change the input/output
+		 *		  stream
+		 */
+		state = f(state, input, background);
 
-	State output_state = state;
-
-	/* Make changes to the output state; 
-	 * Assumptions: all properties of pure function is satisfied, i.e.,
-	 *		- the function returns identical arguments (no variation with local static variables,
-	 *		  non-local variables, mutable reference arguments or input streams). 
-	 *		- function has no side-effects, i.e., no mutation of local static variables, non-local
-	 *		  variables, mutable refernce arguments or input/output streams
-	 *		=> the above points imply that this function does not change any attribute within State
-	 *		  that is a mutable reference
-	 */
-
-	return output_state;
-
+		/* Following is done to enter the result into the unordered_map 'output_map' to prevent 'f' to
+		 * recompute the State value for same value of In and Background
+		 * std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> output_map;
+		 */
+		//if Background data corresponding to the unique hash is already present in the output_map
+		if (output_map.find(background) != output_map.end())
+		{
+			output_map.at(background).insert({ input, state });
+		}
+		//if Background data corresponding to the unique hash is not present in the ouput map
+		else
+		{
+			std::unordered_map<In, State> temp_input_state_map = {{input, state}};
+			output_map.insert({background, temp_input_state_map});
+		}
+	}
 }
 #endif //TEMPLATE_CLASSES_AND_DERIVATION_H__
