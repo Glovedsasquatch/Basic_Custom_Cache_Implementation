@@ -1,5 +1,5 @@
-#ifndef TEMPLATE_CLASSES_AND_DERIVATION_H__
-#define TEMPLATE_CLASSES_AND_DERIVATION_H__
+#ifndef BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
+#define BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
 
 #include <iostream>
 #include <string>
@@ -61,7 +61,7 @@ private:
 	std::shared_ptr<T> m_data;	//this is set after querying the hash from the database
 };
 
-//Dummy function for fetching Background data from a database
+// Dummy function for fetching Background data from a database
 const std::shared_ptr<Background const> queryBackgroundFromDB(const std::string& hash);
 
 /* - background_cache: contains all the entries of the cached data which can be used across sessions
@@ -73,22 +73,15 @@ const std::shared_ptr<Background const> queryBackgroundFromDB(const std::string&
  */
 std::unordered_map<std::string, CacheObject<Background>> background_cache;
 
-//For keeping the 
+// For keeping the 
 std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> output_map;
 
 template<typename T>
 void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>>& cache);
 
+// Pure function which has high running time
 template<typename In>
-State f(const State& state, In&&, const std::shared_ptr<Background const> background)
-{
-	//Make changes to the output_state instead of directly working on the the input argument 'state'
-	State return_state = state;
-
-	// The function runs from here on and returns ......
-
-	return return_state;
-}
+State f(const State& state, In&&, const std::shared_ptr<Background const> background);
 
 /* - This function act as an interface to the pure function 'f'
  * - It checks if the State value corresponding to the given values of Background and In is already
@@ -161,4 +154,5 @@ void interfaceFunction(
 		}
 	}
 }
-#endif //TEMPLATE_CLASSES_AND_DERIVATION_H__
+
+#endif //BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
