@@ -65,3 +65,14 @@ void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>
 		}
 	}
 }
+
+template<typename In>
+State f(const State& state, In&&, const std::shared_ptr<Background const> background)
+{
+    //Make changes to the output_state instead of directly working on the the input argument 'state'
+    State return_state = state;
+
+    // The function runs from here on and returns ......
+
+    return return_state;
+}
