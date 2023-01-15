@@ -6,20 +6,35 @@
 #include <ctime>
 #include <memory>
 #include <unordered_map>
+#include <map>
 
 struct In
 {
-	// member objects and member functions
+	//Dummy member variables
+    	int m_dummy_value;
+    	char m_dummy_char;
+
+    	// Member functions
+    	bool operator==(const In& rhs) const; //placed for code correctness
 };
 
 struct Background
 {
-	// member objects and member functions
+	/* Member objects */
+    	// hash is unqiue to every Background object
+    	std::string m_hash; 
+    
+    	//member functions
 };
 
 struct State
 {
-	// member objects and member functions
+	//Dummy members
+    	int dummy_val1;
+    	int dummy_val2;
+
+    	// Member functions
+    	bool operator==(const State& rhs) const; // placed for code-correctness
 };
 
 template<typename T>
@@ -69,16 +84,20 @@ const std::shared_ptr<Background const> queryBackgroundFromDB(const std::string&
  */
 std::unordered_map<std::string, CacheObject<Background>> background_cache;
 
-// For chekcing the validity of every CacheObject stored inside cache based on @param CacheObject<Background>::time_to_live
+/* Iterate over the cache to check the CacheObject objects that have overshot the @param 
+ * CacheObject<T>::time_to_live and remove them
+ */
 template<typename T>
 void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>>& cache);
 
-/* @params states_inout_value_table: stores the output state value
+/* @states_inout_value_table: stores the output tate value
  * The output state value depends on:
- *	- background value
- * 	- In&&: the rvalue reference 'In' object
+ *    - input state value
+ *    - background value
+ *    - In&&: the rvalue reference 'In' object
  */
-std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> states_inout_value_table;
+using InOutState = std::tuple<State, State>;
+std::unordered_map<std::shared_ptr<Background const>, std::multimap<In, InOutState>> states_inout_value_table;
 
 
 // Pure function that has a high running time
@@ -86,76 +105,27 @@ template<typename In>
 State f(const State& state, In&&, const std::shared_ptr<Background const> background);
 
 /* - This function act as an interface to the pure function 'f'
- * - It checks if the output State value corresponding to the input State value and the values of 
- * the arguments Background, and In, is present inside 'states_inout_value_table'
- * - If such an entry is found in 'states_inout_value_table', the outout State value is returned without
- * calling 'f'
- * - Assumptions:
- *            = we assume that struct Background contains a std::string member object used to store 
- *              a unique hash value
- */
-void interfaceFunction(
-	State& state, const In& input, const std::string& hash) 
-{
-	// @param background: stores the data fetched from the cache or the database
-	std::shared_ptr<Background const> background;
+ * - It checks if the output State value corresponding to the input State value and the values of
+ * the arguments Background, and In
+ * - If such an entry is found in 'states_inout_states_inout_value_table', the outout State value is returned without
+ * calling 'f'
+ * - Assumption/s:
+ *		= we assume that struct Background contains a std::string member object used to store
+ *		  a unique hash value
+ */
+void interfaceFunction(State& state, const In& input, const std::string& hash);
 
-	// Looks if the background data corresponding to the hash value is present in 'background_cache'
-	if (background_cache.find(hash) != background_cache.end())
-	{
-		background = std::make_shared<Background const>(background_cache.at(hash).getData());
-	}
-	else
-	{
-		/* If a Background value is not present in the cache, then the following is done :
-		 * 1. query and fetch the Background data from the database
-		 * 2. Create a temporary background cache object
-		 * 3. cache the data
-		 */
-
-		//1. Fetch the data from the DB using the hash value
-		background = queryBackgroundFromDB(hash);
-
-		// 2 and 3. creating a CacheObject with 'background' and caching it
-		background_cache.insert({ hash, CacheObject<Background>(hash, background)});
-	}
-
-	//Checks for the value corresponding to the background in 'states_inout_value_table'
-	if (states_inout_value_table.find(background) != states_inout_value_table.end())
-	{
-		if (states_inout_value_table.at(background).find(input) != states_inout_value_table.at(background).end())
-		{
-			state = states_inout_value_table.at(background).at(input);
-		}
-	}
-	else //calls 'f'
-	{
-		/* Assumptions: all properties of pure function is satisfied, i.e.,
-		 *		- the function returns identical arguments (no variation with local static variables,
-		 *		  non-local variables, mutable reference arguments or input streams).
-		 *		- function has no side-effects, i.e., no mutation of local static variables, non-local
-		 *		  variables, mutable refernce arguments or input/output streams
-		 *		=> the above points imply that this function does not change any attribute within State
-		 *		  that is a mutable reference or calls any method in State that can change the input/output
-		 *		  stream
-		 */
-		state = f(state, input, background);
-
-		/* the output State result is placed in 'states_inout_value_table' to prevent 'f' from recomputing 
-         	 * the state value for the same input argument
-         	 */
-		// if 'background' is already present in the 'states_inout_value_table'
-		if (states_inout_value_table.find(background) != states_inout_value_table.end())
-		{
-			states_inout_value_table.at(background).insert({ input, state });
-		}
-		// if 'background' is not present in the 'states_inout_value_table'
-		else
-		{
-			std::unordered_map<In, State> temp_input_state_map = {{input, state}};
-			states_inout_value_table.insert({background, temp_input_state_map});
-		}
-	}
-}
+/* This method does two tasks:
+ *		1. call 'f'
+ *		2. insert the output State value computed by 'f' along with the argument values into 
+ *		   states_inout_value_table
+ * The output State result is placed in 'states_inout_states_inout_value_table' to prevent 'f' from recomputing
+ * this for the same input arguments
+ */
+void callfAndStoreOutputToTable(
+	State& state,
+	const In& input,
+	const std::shared_ptr<Background const> background,
+	std::unordered_map<std::shared_ptr<	Background const>, std::multimap<In, InOutState>>& value_table);
 
 #endif //BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
