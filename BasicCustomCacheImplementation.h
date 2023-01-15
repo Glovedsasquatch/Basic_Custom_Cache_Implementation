@@ -1,3 +1,18 @@
+/* @author: Prabha Shankar
+ * 
+ * File contains the basic datastructure definitions of:
+ * 	- @struct In : some input data structure
+ * 	- @struct Background: some given background data structure
+ * 	- @struct State : output of the states depend on input State value, In and Background
+ * 	- @class CacheObject : template cache objects
+ * 	- @var background_cache : unordered map of unique hash (key) and CacheObject (value)
+ * 	- @var state_inout_value_table : unordered map (composition of other STL datastructures) that
+ * 	  stored output State values computed using 'f' and stored along with input State value, 
+ * 	  Background and In values (it is assumed that there is a unique mapping between output State value
+ * 	  and its three data dependencies)
+ */
+
+
 #ifndef BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
 #define BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__
 
@@ -71,7 +86,7 @@ public:
 private:
 	std::string m_hash;		//hash value to identify the background in the database
 	std::clock_t m_begin_time;	//to set the timestamp when the background data was first cached
-	std::shared_ptr<T> m_data;	//this is set after querying the database with the hash
+	std::shared_ptr<T const> m_data;	//this is set after querying the database with the hash
 };
 
 /* - background_cache: contains all the entries of the cached data which can be used across sessions
@@ -81,7 +96,7 @@ private:
  */
 std::unordered_map<std::string, CacheObject<Background>> background_cache;
 
-/* @states_inout_value_table: stores the output tate value
+/* @states_inout_value_table: stores the output State value and its data dependencies
  * The output state value depends on:
  *    - input state value
  *    - background value
