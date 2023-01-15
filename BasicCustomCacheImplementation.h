@@ -73,20 +73,27 @@ const std::shared_ptr<Background const> queryBackgroundFromDB(const std::string&
  */
 std::unordered_map<std::string, CacheObject<Background>> background_cache;
 
-// For keeping the 
-std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> output_map;
-
+// For chekcing the validity of every CacheObject stored inside cache based on @param time_to_live
 template<typename T>
 void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>>& cache);
 
-// Pure function which has high running time
+/* @params states_inout_value_table: stores the output state value
+ * The output state value depends on:
+ *	- input state value
+ *	- background value
+ * 	- In&&: the rvalue reference 'In' object
+ */
+std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> states_inout_value_table;
+
+
+// Pure function that has a high running time
 template<typename In>
 State f(const State& state, In&&, const std::shared_ptr<Background const> background);
 
 /* - This function act as an interface to the pure function 'f'
  * - It checks if the State value corresponding to the given values of Background and In is already
- * present in the output_map
- * - If it finds the State value in output_map, it returns this value without calling 'f'; else it
+ * present in the states_inout_value_table
+ * - If it finds the State value in states_inout_value_table, it returns this value without calling 'f'; else it
  * calls 'f'
  * - Assumptions:
  *			= we assume that struct Background contains a std::string member object used to store 
@@ -95,6 +102,7 @@ State f(const State& state, In&&, const std::shared_ptr<Background const> backgr
 void interfaceFunction(
 	State& state, const In& input, const std::string& hash) 
 {
+	// @param background: stores the data fetched from cache or database
 	std::shared_ptr<Background const> background;
 
 	//Look if the background data corresponding to the hash value is present in the background_cache
@@ -117,11 +125,11 @@ void interfaceFunction(
 		background_cache.insert({ hash, CacheObject<Background>(hash, background)});
 	}
 
-	if (output_map.find(background) != output_map.end())
+	if (states_inout_value_table.find(background) != states_inout_value_table.end())
 	{
-		if (output_map.at(background).find(input) != output_map.at(background).end())
+		if (states_inout_value_table.at(background).find(input) != states_inout_value_table.at(background).end())
 		{
-			state = output_map.at(background).at(input);
+			state = states_inout_value_table.at(background).at(input);
 		}
 	}
 	else
@@ -137,20 +145,20 @@ void interfaceFunction(
 		 */
 		state = f(state, input, background);
 
-		/* Following is done to enter the result into the unordered_map 'output_map' to prevent 'f' to
+		/* Following is done to enter the result into the unordered_map 'states_inout_value_table' to prevent 'f' to
 		 * recompute the State value for same value of In and Background
-		 * std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> output_map;
+		 * std::unordered_map<std::shared_ptr<Background const>, std::unordered_map<In, State>> states_inout_value_table;
 		 */
-		//if Background data corresponding to the unique hash is already present in the output_map
-		if (output_map.find(background) != output_map.end())
+		//if Background data corresponding to the unique hash is already present in the states_inout_value_table
+		if (states_inout_value_table.find(background) != states_inout_value_table.end())
 		{
-			output_map.at(background).insert({ input, state });
+			states_inout_value_table.at(background).insert({ input, state });
 		}
 		//if Background data corresponding to the unique hash is not present in the ouput map
 		else
 		{
 			std::unordered_map<In, State> temp_input_state_map = {{input, state}};
-			output_map.insert({background, temp_input_state_map});
+			states_inout_value_table.insert({background, temp_input_state_map});
 		}
 	}
 }
