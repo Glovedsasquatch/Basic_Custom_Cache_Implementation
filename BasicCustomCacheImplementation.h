@@ -74,21 +74,12 @@ private:
 	std::shared_ptr<T> m_data;	//this is set after querying the database with the hash
 };
 
-// Dummy function for fetching Background data from a database
-const std::shared_ptr<Background const> queryBackgroundFromDB(const std::string& hash);
-
 /* - background_cache: contains all the entries of the cached data which can be used across sessions
  * - Duration for which the data exists depends on @param CacheObject<Background>::time_to_live;
  *   If a previous session is resumed, the background data is flushed (retained) if the 
  *   time_to_live value is overshot (not overshot)
  */
 std::unordered_map<std::string, CacheObject<Background>> background_cache;
-
-/* Iterate over the cache to check the CacheObject objects that have overshot the @param 
- * CacheObject<T>::time_to_live and remove them
- */
-template<typename T>
-void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>>& cache);
 
 /* @states_inout_value_table: stores the output tate value
  * The output state value depends on:
@@ -98,11 +89,6 @@ void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>
  */
 using InOutState = std::tuple<State, State>;
 std::unordered_map<std::shared_ptr<Background const>, std::multimap<In, InOutState>> states_inout_value_table;
-
-
-// Pure function that has a high running time
-template<typename In>
-State f(const State& state, In&&, const std::shared_ptr<Background const> background);
 
 /* - This function act as an interface to the pure function 'f'
  * - It checks if the output State value corresponding to the input State value and the values of
@@ -114,18 +100,5 @@ State f(const State& state, In&&, const std::shared_ptr<Background const> backgr
  *		  a unique hash value
  */
 void interfaceFunction(State& state, const In& input, const std::string& hash);
-
-/* This method does two tasks:
- *		1. call 'f'
- *		2. insert the output State value computed by 'f' along with the argument values into 
- *		   states_inout_value_table
- * The output State result is placed in 'states_inout_states_inout_value_table' to prevent 'f' from recomputing
- * this for the same input arguments
- */
-void callfAndStoreOutputToTable(
-	State& state,
-	const In& input,
-	const std::shared_ptr<Background const> background,
-	std::unordered_map<std::shared_ptr<	Background const>, std::multimap<In, InOutState>>& value_table);
 
 #endif //BASIC_CUSTOM_CACHE_IMPLEMENTATION_H__

@@ -1,4 +1,5 @@
 #include "BasicCustomCacheImplementation.h"
+#include "xutility.h"
 
 bool In::operator==(const In& rhs) const
 {
@@ -56,61 +57,6 @@ std::shared_ptr<Background const> CacheObject<Background>::getData() const
 	return m_data;
 }
 
-template<typename T> 
-void checkCacheDataValidity(const std::unordered_map<std::string, CacheObject<T>>& cache)
-{
-	/* If a required Background value is not present in the cache, then the following is done :
-	 * 1. query and fetch the Background data from the database
-	 * 2. Create a temporary background cache object
-	 * 3. cache the data
-	 */
-	for (auto it = cache.begin(); it != cache.end();)
-	{
-		if (!it->second.isUnderTimeToLive())
-		{
-			it = cache.erase(it);
-		}
-		else
-		{
-			it++;
-		}
-	}
-}
-
-template<typename In>
-State f(const State& state, In&&, const std::shared_ptr<Background const> background)
-{
-    //Make changes to the output_state instead of directly working on the the input argument 'state'
-    State return_state = state;
-
-    // The function runs from here on and returns ......
-
-    return return_state;
-}
-
-void callfAndStoreOutputToTable(
-	State& state,
-	const In& input,
-	const std::shared_ptr<Background const> background,
-	std::unordered_map<std::shared_ptr<	Background const>, std::multimap<In, InOutState>>& value_table)
-{
-	// Calling 'f'
-	State input_state = state;
-	state = f(input_state, input, background);
-
-	// if 'background' is already present in the 'states_inout_states_inout_value_table'
-	if (states_inout_value_table.find(background) != states_inout_value_table.end())
-	{
-		states_inout_value_table.at(background).insert({ input, std::make_tuple(input_state, state) });
-	}
-	// if 'background' is not present in the 'states_inout_states_inout_value_table'
-	else
-	{
-		std::multimap<In, InOutState> temp_inout_multimap = { { input, std::make_tuple(input_state, state) } };
-		states_inout_value_table.insert({ background, temp_inout_multimap });
-	}
-}
-
 void interfaceFunction(State& state, const In& input, const std::string& hash) 
 {
 	// @param background: stores the value fetched from either the cache or the database
@@ -130,7 +76,7 @@ void interfaceFunction(State& state, const In& input, const std::string& hash)
 		 */
 
 		 //1. Fetch the data from the DB using the hash value
-		background = queryBackgroundFromDB(hash);
+		background = utility::queryBackgroundFromDB(hash);
 
 		// 2 and 3. creating a CacheObject with 'background' and caching it
 		background_cache.insert({ hash, CacheObject<Background>(hash, background) });
@@ -156,17 +102,17 @@ void interfaceFunction(State& state, const In& input, const std::string& hash)
 
 			if (itr == states_multimap.end())
 			{
-				callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
+				utility::callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
 			}
 		}
 		else //calls 'f'
 		{
-			callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
+			utility::callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
 		}
 	}
 	else // calls 'f'
 	{
-		callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
+		utility::callfAndStoreOutputToTable(state, input, background, states_inout_value_table);
 	}
 }
 
