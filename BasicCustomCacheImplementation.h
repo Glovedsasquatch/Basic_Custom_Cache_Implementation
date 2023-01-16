@@ -29,13 +29,14 @@ struct In
     	int m_dummy_value;
     	char m_dummy_char;
 
-    	// Member functions
+    	// Dummy Member functions
+	In(int dummy_value, int dummy_char);
     	bool operator==(const In& rhs) const; //placed for code correctness
 };
 
 struct Background
 {
-	/* Member objects */
+	// Member objects
     	// hash is unqiue to every Background object
     	std::string m_hash; 
     

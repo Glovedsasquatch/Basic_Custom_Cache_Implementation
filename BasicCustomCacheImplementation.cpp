@@ -17,6 +17,13 @@ bool State::operator==(const State& rhs) const
     return (dummy_val1 == rhs.dummy_val1) && (dummy_val2 == rhs.dummy_val2);
 }
 
+In::In(int dummy_value, int dummy_char)
+	: m_dummy_value(dummy_value)
+	, m_dummy_char(dummy_char)
+{
+	
+}
+
 
 const long CacheObject<Background>::time_to_live;
 

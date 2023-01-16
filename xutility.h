@@ -50,7 +50,7 @@ namespace utility
 	 *	   stream
 	 */
 	template<typename In>
-	State f(const State& state, const In& in_input, const std::shared_ptr<Background const> background)
+	State f(const State& state, In&& in_input, const std::shared_ptr<Background const> background)
 	{
 	    //Make changes to the output_state instead of directly working on the the input argument 'state'
 	    //to ensure there are no changes to state (violation of rule 2)
@@ -72,11 +72,11 @@ namespace utility
 		State& state,
 		const In& input,
 		const std::shared_ptr<Background const> background,
-		std::unordered_map<std::shared_ptr<	Background const>, std::multimap<In, InOutState>>& value_table)
+		std::unordered_map<std::shared_ptr<Background const>, std::multimap<In, InOutState>>& value_table)
 	{
 		// Calling 'f'
 		State input_state = state;
-		state = f(input_state, input, background);
+		state = f(input_state, In(input.m_dummy_value, input.m_dummy_char), background);
 
 		// if 'background' is already present in the 'states_inout_states_inout_value_table'
 		if (states_inout_value_table.find(background) != states_inout_value_table.end())
