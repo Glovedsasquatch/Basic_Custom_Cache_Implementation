@@ -53,7 +53,7 @@ namespace utility
 	State f(const State& state, const In& in_input, const std::shared_ptr<Background const> background)
 	{
 	    //Make changes to the output_state instead of directly working on the the input argument 'state'
-	    //to ensure no changes to 
+	    //to ensure there are no changes to state (violation of rule 2)
 	    State output_state = state;
 
 	    // The function runs from here on and returns ......
