@@ -41,8 +41,8 @@ namespace utility
 	
 	/* f: Pure function that has a high running time
 	 * Assumptions: all properties of pure function is satisfied, i.e.,
-	 *	- Rule 1: the function returns identical arguments (no variation with local static variables,
-	 *	  non-local variables, mutable reference arguments or input streams).
+	 *	- Rule 1: the function return values are identical for identical arguments (no variation with local
+	 *	  static variables, non-local variables, mutable reference arguments or input streams)
 	 *	- Rule 2: function has no side-effects, i.e., no mutation of local static variables, non-local
 	 *	  variables, mutable refernce arguments or input/output streams
 	 *	=> the above points imply that this function does not change any attribute within State
